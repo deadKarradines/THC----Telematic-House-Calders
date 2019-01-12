@@ -1,40 +1,40 @@
 #include "SoftwareSerial.h"
 #include <DHT.h>
+#include <DHT_U.h>
+#include <Adafruit_Sensor.h>
 
-#define DHTPIN 8     // what pin we're connected to
+#define DHTPIN 6     // what pin we're connected to
+#define DHTTYPE DHT22   // DHT 22  (AM2302)
 
-#define DHTTYPE DHT11   // DHT 22  (AM2302)
 DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
+SoftwareSerial esp(2 , 3);// RX, TX
+
+String MEAS_NAME = "HabDSG_dht";
 
 String ssid = "Connecta_1016";
 String password = "GLD4SGYI55";
-
-SoftwareSerial esp(3 , 2);// RX, TX
+String server = "209.97.136.243"; 
+String uri = "/write?db=CASA";
 
 int chk;
-float hum_in;  //Stores humidity value
-float temp_in; //Stores temperature value
-
+float hum;       //Stores humidity value
+float temp;        //Stores temperature value
 String data;        //lo que enviaremos
-
-String server = "209.97.136.243"; // www.example.com
-String uri = "/write?db=CASA";// our example is /esppost.php
-
-String temp , hum;
 
 void setup() {
   dht.begin();
   esp.begin(9600);
   Serial.begin(9600);
   reset_esp();
- // connectWifi();
+  connectWifi();
 }
 
 //reset the esp8266 module
 void reset_esp() {
   esp.println("AT+RST");
   delay(1000);
-  if (esp.find("OK") ) Serial.println("Module Reset");
+  if (esp.find("OK") ) 
+      Serial.println("Module Reset");
 }
 
 
@@ -49,42 +49,35 @@ void connectWifi() {
   }
   else {
     Serial.println("Cannot connect to wifi. Let's try again...");
-    connectWifi();   
+    connectWifi();
   }
 }
 
 
-
-
-
 void loop () {
+  hum = dht.readHumidity();
+  temp = dht.readTemperature();
 
-    Serial.println("Inicio del loop");
-    hum_in = dht.readHumidity();
-    temp_in= dht.readTemperature();
-    
-    
-    Serial.println("La lectura es: ");
-    Serial.print("Humidity: ");
-    Serial.print(hum_in);
-    Serial.print(" %, Temp: ");
-    Serial.print(temp_in);
-    Serial.println(" Celsius----");
-   
-   
-    delay(2000); //Delay 2 sec.
-  
-     data = "CASA tempHabitacio_dht=" +String(temp_in) + ",humHabitacio_dht=" +String(hum_in);
+  Serial.print("Humidity: ");
+  Serial.print(hum);
+  Serial.print(" %, Temp: ");
+  Serial.print(temp);
+  Serial.println(" Celsius----");
 
-     httppost();
-  
-  delay(1000);
+  send_data_to_influx(temp,hum);
+ 
+  delay(5000);
 
 }
 
+
+void send_data_to_influx(float temp, float hum){
+  data = "CASA temp" + String(MEAS_NAME)+"=" + String(temp) + ",hum"+String(MEAS_NAME)+"=" + String(hum);
+  Serial.println(data);
+  httppost();
+}
+
 void httppost () {
-
-
   esp.println("AT+CIPSTART=\"TCP\",\"" + server + "\",8086");//start a TCP connection.
   if ( esp.find("OK")) {
     Serial.println("TCP connection ready");
