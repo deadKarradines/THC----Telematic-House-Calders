@@ -4,14 +4,17 @@
 #include <Adafruit_Sensor.h>
 
 #define DHTPIN 6     // what pin we're connected to
+#define DHTPIN2 7     // what pin we're connected to
 #define DHTTYPE DHT22   // DHT 22  (AM2302)
 
 DHT dht(DHTPIN, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
+DHT dht2(DHTPIN2, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
 SoftwareSerial esp(2 , 3);// RX, TX
 
-String MEAS_NAME = "HabDSG_dht";
+String MEAS_NAME = "DHT_01";
+String MEAS_NAME2 = "DHT_02";
 
-String ssid = "Connecta_1016";
+String ssid = "SOOM_000867";
 String password = "GLD4SGYI55";
 String server = "209.97.136.243"; 
 String uri = "/write?db=CASA";
@@ -23,6 +26,7 @@ String data;        //lo que enviaremos
 
 void setup() {
   dht.begin();
+  dht2.begin();
   esp.begin(9600);
   Serial.begin(9600);
   reset_esp();
@@ -64,15 +68,27 @@ void loop () {
   Serial.print(temp);
   Serial.println(" Celsius----");
 
-  send_data_to_influx(temp,hum);
+  send_data_to_influx(MEAS_NAME, temp,hum);
+
+
+  hum = dht2.readHumidity();
+  temp = dht2.readTemperature();
+
+  Serial.print("Humidity: ");
+  Serial.print(hum);
+  Serial.print(" %, Temp: ");
+  Serial.print(temp);
+  Serial.println(" Celsius----");
+
+  send_data_to_influx(MEAS_NAME2, temp,hum);
  
   delay(5000);
 
 }
 
 
-void send_data_to_influx(float temp, float hum){
-  data = "CASA temp" + String(MEAS_NAME)+"=" + String(temp) + ",hum"+String(MEAS_NAME)+"=" + String(hum);
+void send_data_to_influx(String meas_name, float temp, float hum){
+  data = "metriques temp" + String(meas_name)+"=" + String(temp) + ",hum"+String(meas_name)+"=" + String(hum);
   Serial.println(data);
   httppost();
 }
